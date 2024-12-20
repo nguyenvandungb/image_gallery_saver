@@ -13,36 +13,72 @@ public class SwiftImageGallerySaverPlugin: NSObject, FlutterPlugin {
       registrar.addMethodCallDelegate(instance, channel: channel)
     }
 
-    public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
-      self.result = result
-      if call.method == "saveImageToGallery" {
-        let arguments = call.arguments as? [String: Any] ?? [String: Any]()
-        guard let imageData = (arguments["imageBytes"] as? FlutterStandardTypedData)?.data,
-            let image = UIImage(data: imageData),
-            let quality = arguments["quality"] as? Int,
-            let _ = arguments["name"],
-            let isReturnImagePath = arguments["isReturnImagePathOfIOS"] as? Bool
-            else { return }
-        let newImage =  image.pngData()!
-        saveImage(UIImage(data: newImage) ?? image, isReturnImagePath: isReturnImagePath)
-      } else if (call.method == "saveFileToGallery") {
-        guard let arguments = call.arguments as? [String: Any],
-              let path = arguments["file"] as? String,
-              let _ = arguments["name"],
-              let isReturnFilePath = arguments["isReturnPathOfIOS"] as? Bool else { return }
-        if (isImageFile(filename: path)) {
-            saveImageAtFileUrl(path, isReturnImagePath: isReturnFilePath)
+    // Function to get the file extension from a name
+    func getFileExtension(from fileName: String) -> String? {
+        // Extract the file extension from the file name
+        let fileExtension = (fileName as NSString).pathExtension.lowercased()
+
+        // Check if the extension is either "png", "jpeg", or "jpg"
+        if fileExtension == "png" || fileExtension == "jpeg" || fileExtension == "jpg" {
+            return fileExtension
         } else {
-            if (UIVideoAtPathIsCompatibleWithSavedPhotosAlbum(path)) {
-                saveVideo(path, isReturnImagePath: isReturnFilePath)
-            }else{
-                self.saveResult(isSuccess:false,error:self.errorMessage)
-            }
+            return nil // Return nil if not a supported image format
         }
-      } else {
-        result(FlutterMethodNotImplemented)
-      }
     }
+
+    public func handle(_ call: FlutterMethodCall, result: @escaping FlutterResult) {
+        self.result = result
+        if call.method == "saveImageToGallery" {
+            let arguments = call.arguments as? [String: Any] ?? [String: Any]()
+            guard let imageData = (arguments["imageBytes"] as? FlutterStandardTypedData)?.data,
+                  let image = UIImage(data: imageData),
+                  let quality = arguments["quality"] as? Int,
+                  let imageName = arguments["name"] as? String,
+                  let isReturnImagePath = arguments["isReturnImagePathOfIOS"] as? Bool
+            else { return }
+
+            // Get file extension from the image name
+            guard let fileExtension = getFileExtension(from: imageName) else {
+                // Handle unsupported file formats
+                result(FlutterError(code: "UNSUPPORTED_FORMAT", message: "Unsupported file format", details: nil))
+                return
+            }
+
+            var newImageData: Data?
+
+            // Depending on the file extension, choose the appropriate data format
+            if fileExtension == "png" {
+                newImageData = image.pngData() // Save as PNG
+            } else if fileExtension == "jpeg" || fileExtension == "jpg" {
+                newImageData = image.jpegData(compressionQuality: CGFloat(quality) / 100.0) // Save as JPEG with specified quality
+            }
+
+            // If the data is not nil, save the image
+            if let newImageData = newImageData {
+                saveImage(UIImage(data: newImageData) ?? image, isReturnImagePath: isReturnImagePath)
+            } else {
+                result(FlutterError(code: "IMAGE_ERROR", message: "Error creating image data", details: nil))
+            }
+        } else if (call.method == "saveFileToGallery") {
+            guard let arguments = call.arguments as? [String: Any],
+                  let path = arguments["file"] as? String,
+                  let _ = arguments["name"],
+                  let isReturnFilePath = arguments["isReturnPathOfIOS"] as? Bool else { return }
+
+            if (isImageFile(filename: path)) {
+                saveImageAtFileUrl(path, isReturnImagePath: isReturnFilePath)
+            } else {
+                if (UIVideoAtPathIsCompatibleWithSavedPhotosAlbum(path)) {
+                    saveVideo(path, isReturnImagePath: isReturnFilePath)
+                } else {
+                    self.saveResult(isSuccess: false, error: self.errorMessage)
+                }
+            }
+        } else {
+            result(FlutterMethodNotImplemented)
+        }
+    }
+
     
     func saveVideo(_ path: String, isReturnImagePath: Bool) {
         if !isReturnImagePath {
