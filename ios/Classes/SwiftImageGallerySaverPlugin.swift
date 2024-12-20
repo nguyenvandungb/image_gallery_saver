@@ -23,7 +23,7 @@ public class SwiftImageGallerySaverPlugin: NSObject, FlutterPlugin {
             let _ = arguments["name"],
             let isReturnImagePath = arguments["isReturnImagePathOfIOS"] as? Bool
             else { return }
-        let newImage =  image.pngData()!
+        let newImage = image.jpegData(compressionQuality: CGFloat(quality / 100))!
         saveImage(UIImage(data: newImage) ?? image, isReturnImagePath: isReturnImagePath)
       } else if (call.method == "saveFileToGallery") {
         guard let arguments = call.arguments as? [String: Any],
@@ -43,14 +43,14 @@ public class SwiftImageGallerySaverPlugin: NSObject, FlutterPlugin {
         result(FlutterMethodNotImplemented)
       }
     }
-    
+
     func saveVideo(_ path: String, isReturnImagePath: Bool) {
         if !isReturnImagePath {
             UISaveVideoAtPathToSavedPhotosAlbum(path, self, #selector(didFinishSavingVideo(videoPath:error:contextInfo:)), nil)
             return
         }
         var videoIds: [String] = []
-        
+
         PHPhotoLibrary.shared().performChanges( {
             let req = PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: URL.init(fileURLWithPath: path))
             if let videoId = req?.placeholderForCreatedAsset?.localIdentifier {
@@ -74,15 +74,15 @@ public class SwiftImageGallerySaverPlugin: NSObject, FlutterPlugin {
             }
         })
     }
-    
+
     func saveImage(_ image: UIImage, isReturnImagePath: Bool) {
         if !isReturnImagePath {
             UIImageWriteToSavedPhotosAlbum(image, self, #selector(didFinishSavingImage(image:error:contextInfo:)), nil)
             return
         }
-        
+
         var imageIds: [String] = []
-        
+
         PHPhotoLibrary.shared().performChanges( {
             let req = PHAssetChangeRequest.creationRequestForAsset(from: image)
             if let imageId = req.placeholderForCreatedAsset?.localIdentifier {
@@ -109,7 +109,7 @@ public class SwiftImageGallerySaverPlugin: NSObject, FlutterPlugin {
             }
         })
     }
-    
+
     func saveImageAtFileUrl(_ url: String, isReturnImagePath: Bool) {
         if !isReturnImagePath {
             if let image = UIImage(contentsOfFile: url) {
@@ -117,9 +117,9 @@ public class SwiftImageGallerySaverPlugin: NSObject, FlutterPlugin {
             }
             return
         }
-        
+
         var imageIds: [String] = []
-        
+
         PHPhotoLibrary.shared().performChanges( {
             let req = PHAssetChangeRequest.creationRequestForAssetFromImage(atFileURL: URL(string: url)!)
             if let imageId = req?.placeholderForCreatedAsset?.localIdentifier {
@@ -146,16 +146,16 @@ public class SwiftImageGallerySaverPlugin: NSObject, FlutterPlugin {
             }
         })
     }
-    
+
     /// finish saving，if has error，parameters error will not nill
     @objc func didFinishSavingImage(image: UIImage, error: NSError?, contextInfo: UnsafeMutableRawPointer?) {
         saveResult(isSuccess: error == nil, error: error?.description)
     }
-    
+
     @objc func didFinishSavingVideo(videoPath: String, error: NSError?, contextInfo: UnsafeMutableRawPointer?) {
         saveResult(isSuccess: error == nil, error: error?.description)
     }
-    
+
     func saveResult(isSuccess: Bool, error: String? = nil, filePath: String? = nil) {
         var saveResult = SaveResultModel()
         saveResult.isSuccess = error == nil
@@ -182,7 +182,7 @@ public struct SaveResultModel: Encodable {
     var isSuccess: Bool!
     var filePath: String?
     var errorMessage: String?
-    
+
     func toDic() -> [String:Any]? {
         let encoder = JSONEncoder()
         guard let data = try? encoder.encode(self) else { return nil }
