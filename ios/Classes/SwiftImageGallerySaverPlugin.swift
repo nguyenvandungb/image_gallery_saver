@@ -32,31 +32,14 @@ public class SwiftImageGallerySaverPlugin: NSObject, FlutterPlugin {
             let isPng = isPngImage(data: imageData)
             let fileExtension = isPng ? "png" : "jpeg"
 
-            // Apply pixel ratio if provided
-            if let pixelRatio = arguments["pixelRatio"] as? CGFloat, pixelRatio > 0 {
-                let newSize = CGSize(width: image.size.width * pixelRatio, height: image.size.height * pixelRatio)
-                UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
-                image.draw(in: CGRect(origin: .zero, size: newSize))
-                let resizedImage = UIGraphicsGetImageFromCurrentImageContext()
-                UIGraphicsEndImageContext()
-
-                if let compressedData = isPng
-                    ? resizedImage?.pngData()
-                    : resizedImage?.jpegData(compressionQuality: adjustedQuality) {
-                    saveImage(UIImage(data: compressedData) ?? resizedImage!, isReturnImagePath: isReturnImagePath, fileExtension: fileExtension)
-                } else {
-                    self.saveResult(isSuccess: false, error: "Failed to compress image")
-                }
-            } else {
-                // No pixel ratio adjustment
-                if let compressedData = isPng
-                    ? image.pngData()
-                    : image.jpegData(compressionQuality: adjustedQuality) {
-                    saveImage(UIImage(data: compressedData) ?? image, isReturnImagePath: isReturnImagePath, fileExtension: fileExtension)
-                } else {
-                    self.saveResult(isSuccess: false, error: "Failed to compress image")
-                }
-            }
+            // No pixel ratio adjustment
+            if let compressedData = isPng
+                                            ? image.pngData()
+                                            : image.jpegData(compressionQuality: adjustedQuality) {
+                                            saveImage(UIImage(data: compressedData) ?? image, isReturnImagePath: isReturnImagePath, fileExtension: fileExtension)
+                                        } else {
+                                            self.saveResult(isSuccess: false, error: "Failed to compress image")
+                                        }
         } else if (call.method == "saveFileToGallery") {
             // Existing file saving logic
         } else {
